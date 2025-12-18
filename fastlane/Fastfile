@@ -1,0 +1,99 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+# Global lanes for Flutter operations
+desc "Run Flutter tests"
+lane :flutter_test do
+  project_root = File.expand_path('..', __dir__)
+  puts "Running Flutter tests..."
+  sh("cd #{project_root} && flutter test")
+end
+
+desc "Analyze Flutter code"
+lane :flutter_analyze do
+  project_root = File.expand_path('..', __dir__)
+  puts "Analyzing Flutter code..."
+  sh("cd #{project_root} && flutter analyze")
+end
+
+desc "Build both iOS and Android"
+lane :flutter_build_all do
+  puts "Building iOS and Android apps..."
+  ios_build
+  android_build
+end
+
+desc "Run full CI pipeline"
+lane :flutter_ci do
+  flutter_analyze
+  flutter_test
+  flutter_build_all
+end
+
+platform :ios do
+  desc "Run tests for iOS"
+  lane :test do
+    puts "Running iOS tests..."
+    flutter_test
+  end
+
+  desc "Build iOS app"
+  lane :build do
+    project_root = File.expand_path('..', __dir__)
+    puts "Building iOS app..."
+    sh("cd #{project_root} && flutter build ios --release --no-codesign")
+  end
+  
+  # Alias for global access
+  lane :ios_build do
+    build
+  end
+
+  desc "Build and archive iOS app"
+  lane :archive do
+    build
+    # Add archive and export steps here as needed
+    # gym(scheme: "Runner", export_method: "app-store")
+  end
+end
+
+platform :android do
+  desc "Run tests for Android"
+  lane :test do
+    puts "Running Android tests..."
+    flutter_test
+  end
+
+  desc "Build Android app"
+  lane :build do
+    project_root = File.expand_path('..', __dir__)
+    puts "Building Android app..."
+    sh("cd #{project_root} && flutter build apk --release")
+  end
+  
+  # Alias for global access
+  lane :android_build do
+    build
+  end
+
+  desc "Build Android App Bundle"
+  lane :build_bundle do
+    project_root = File.expand_path('..', __dir__)
+    puts "Building Android App Bundle..."
+    sh("cd #{project_root} && flutter build appbundle --release")
+  end
+end

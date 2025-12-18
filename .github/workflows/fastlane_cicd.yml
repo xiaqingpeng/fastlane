@@ -1,0 +1,94 @@
+name: Fastlane CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1.5'
+        bundler-cache: true
+        working-directory: ./fastlane
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.3'
+    
+    - name: Get Flutter dependencies
+      run: flutter pub get
+    
+    - name: Run Flutter tests
+      run: fastlane flutter test
+
+  build-android:
+    needs: test
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1.5'
+        bundler-cache: true
+        working-directory: ./fastlane
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.3'
+    
+    - name: Get Flutter dependencies
+      run: flutter pub get
+    
+    - name: Build Android APK
+      run: fastlane android build
+    
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    needs: test
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1.5'
+        bundler-cache: true
+        working-directory: ./fastlane
+    
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.3'
+    
+    - name: Get Flutter dependencies
+      run: flutter pub get
+    
+    - name: Build iOS app
+      run: fastlane ios build
+    
+    - name: Upload iOS artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ios-app
+        path: build/ios/iphoneos/Runner.app

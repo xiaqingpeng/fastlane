@@ -1,0 +1,6 @@
+# For more information about the Pluginfile, see:
+#     https://docs.fastlane.tools/plugins/advanced/#pluginfile
+
+# gem 'fastlane-plugin-xcode-install'
+# gem 'fastlane-plugin-android_versioning'
+# gem 'fastlane-plugin-flutter_version_manager'
