@@ -33,7 +33,6 @@ jobs:
   #     run: bundle exec fastlane flutter_test
 
   build-android:
-    needs: test
     runs-on: macos-latest
     
     steps:
@@ -163,7 +162,6 @@ jobs:
           ls -la /var/www/html
 
   build-ios:
-    needs: test
     runs-on: macos-latest
     
     steps:
