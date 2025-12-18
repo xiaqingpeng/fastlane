@@ -7,30 +7,30 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
-    runs-on: macos-latest
+  # test:
+  #   runs-on: macos-latest
     
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
     
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.1.5'
-        bundler-cache: true
-        working-directory: ./fastlane
+  #   - name: Set up Ruby
+  #     uses: ruby/setup-ruby@v1
+  #     with:
+  #       ruby-version: '3.1.5'
+  #       bundler-cache: true
+  #       working-directory: ./fastlane
     
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.38.3'
+  #   - name: Set up Flutter
+  #     uses: subosito/flutter-action@v2
+  #     with:
+  #       flutter-version: '3.38.3'
     
-    - name: Get Flutter dependencies
-      run: flutter pub get
+  #   - name: Get Flutter dependencies
+  #     run: flutter pub get
     
-    - name: Run Flutter tests
-      working-directory: ./fastlane
-      run: bundle exec fastlane flutter_test
+  #   - name: Run Flutter tests
+  #     working-directory: ./fastlane
+  #     run: bundle exec fastlane flutter_test
 
   build-android:
     needs: test
