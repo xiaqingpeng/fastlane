@@ -96,6 +96,20 @@ jobs:
         brew install openssh
         brew install hudochenkov/sshpass/sshpass
 
+    - name: Debug and check GitHub Secrets
+      run: |
+        echo "Debug: Checking GitHub Secrets..."
+        echo "SERVER_HOST exists: ${{ secrets.SERVER_HOST != '' }}"
+        echo "SERVER_USERNAME exists: ${{ secrets.SERVER_USERNAME != '' }}"
+        echo "SERVER_PASSWORD exists: ${{ secrets.SERVER_PASSWORD != '' }}"
+        
+        # Check if all required secrets are set
+        if [ -z "${{ secrets.SERVER_HOST }}" ] || [ -z "${{ secrets.SERVER_USERNAME }}" ] || [ -z "${{ secrets.SERVER_PASSWORD }}" ]; then
+          echo "ERROR: Missing required GitHub Secrets!"
+          echo "Please check that SERVER_HOST, SERVER_USERNAME, and SERVER_PASSWORD are set in repository Secrets."
+          exit 1
+        fi
+
     - name: Add server to known_hosts
       run: |
         mkdir -p ~/.ssh
@@ -193,6 +207,41 @@ jobs:
           echo "ERROR: iOS app not found!"
           exit 1
         fi
+
+    - name: Install SSH client and sshpass
+      run: |
+        brew install openssh
+        brew install hudochenkov/sshpass/sshpass
+
+    - name: Debug and check GitHub Secrets
+      run: |
+        echo "Debug: Checking GitHub Secrets..."
+        echo "SERVER_HOST exists: ${{ secrets.SERVER_HOST != '' }}"
+        echo "SERVER_USERNAME exists: ${{ secrets.SERVER_USERNAME != '' }}"
+        echo "SERVER_PASSWORD exists: ${{ secrets.SERVER_PASSWORD != '' }}"
+        
+        # Check if all required secrets are set
+        if [ -z "${{ secrets.SERVER_HOST }}" ] || [ -z "${{ secrets.SERVER_USERNAME }}" ] || [ -z "${{ secrets.SERVER_PASSWORD }}" ]; then
+          echo "ERROR: Missing required GitHub Secrets!"
+          echo "Please check that SERVER_HOST, SERVER_USERNAME, and SERVER_PASSWORD are set in repository Secrets."
+          exit 1
+        fi
+
+    - name: Add server to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Create SSH config
+      run: |
+        echo "Host upload-server"
+        echo "  HostName ${{ secrets.SERVER_HOST }}"
+        echo "  User ${{ secrets.SERVER_USERNAME }}"
+        echo "  PasswordAuthentication yes"
+        echo "  StrictHostKeyChecking no"
+        echo "  UserKnownHostsFile ~/.ssh/known_hosts" > ~/.ssh/config
+        chmod 600 ~/.ssh/config
 
     - name: Upload iOS App to Server
       run: |
