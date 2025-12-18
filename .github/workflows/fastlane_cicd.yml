@@ -125,41 +125,36 @@ jobs:
         echo "  UserKnownHostsFile ~/.ssh/known_hosts" > ~/.ssh/config
         chmod 600 ~/.ssh/config
 
-    - name: Upload APK to Server
+    - name: Upload APK and HTML to Server (Optimized)
       run: |
-        sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -P 22 app-release.apk ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/var/www/html/
+        # Optimize SCP with faster encryption, compression, and single connection
+        sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -P 22 -c aes128-gcm@openssh.com -C app-release.apk download.html ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/var/www/html/
 
-    - name: Upload HTML to Server
+    - name: Verify Files on Server (Direct SSH)
       run: |
-        sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -P 22 download.html ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/var/www/html/
-
-    - name: Verify Files on Server
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        script: |
-          echo "=== Checking /var/www/html directory contents ==="
-          ls -la /var/www/html
-          
-          echo "\n=== Fixing APK file location if needed ==="
-          if [ -f /var/www/html/app-release.apk ]; then
-            echo "APK file is already in correct location: /var/www/html/app-release.apk"
-          else
-            echo "ERROR: APK file not found!"
-          fi
-          
-          echo "\n=== Checking file permissions ==="
-          ls -lh /var/www/html/*.apk 2>/dev/null || echo "No APK files found"
-          ls -lh /var/www/html/download.html 2>/dev/null || echo "No HTML file found"
-          
-          echo "\n=== Setting proper permissions ==="
-          chmod 644 /var/www/html/app-release.apk 2>/dev/null
-          chmod 644 /var/www/html/download.html 2>/dev/null
-          
-          echo "\n=== Final directory contents ==="
-          ls -la /var/www/html
+        # Use sshpass and ssh directly to run commands on server
+        sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -p 22 ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        echo "=== Checking /var/www/html directory contents ==="
+        ls -la /var/www/html
+        
+        echo "\n=== Fixing APK file location if needed ==="
+        if [ -f /var/www/html/app-release.apk ]; then
+          echo "APK file is already in correct location: /var/www/html/app-release.apk"
+        else
+          echo "ERROR: APK file not found!"
+        fi
+        
+        echo "\n=== Checking file permissions ==="
+        ls -lh /var/www/html/*.apk 2>/dev/null || echo "No APK files found"
+        ls -lh /var/www/html/download.html 2>/dev/null || echo "No HTML file found"
+        
+        echo "\n=== Setting proper permissions ==="
+        chmod 644 /var/www/html/app-release.apk 2>/dev/null
+        chmod 644 /var/www/html/download.html 2>/dev/null
+        
+        echo "\n=== Final directory contents ==="
+        ls -la /var/www/html
+        EOF
 
   build-ios:
     runs-on: macos-latest
@@ -241,27 +236,26 @@ jobs:
         echo "  UserKnownHostsFile ~/.ssh/known_hosts" > ~/.ssh/config
         chmod 600 ~/.ssh/config
 
-    - name: Upload iOS App to Server
+    - name: Upload iOS App to Server (Optimized)
       run: |
-        sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -P 22 -r Runner.app ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/var/www/html/
+        # Optimize SCP with faster encryption, compression for iOS app
+        sshpass -p '${{ secrets.SERVER_PASSWORD }}' scp -P 22 -c aes128-gcm@openssh.com -C -r Runner.app ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/var/www/html/
 
-    - name: Verify iOS Files on Server
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USERNAME }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        script: |
-          echo "=== Checking iOS app on server ==="
-          if [ -d /var/www/html/Runner.app ]; then
-            echo "iOS app is in correct location: /var/www/html/Runner.app"
-            echo "iOS app size: $(du -sh /var/www/html/Runner.app | awk '{print $1}')"
-          else
-            echo "ERROR: iOS app not found!"
-          fi
-          
-          echo "\n=== Setting proper permissions for iOS app ==="
-          chmod -R 755 /var/www/html/Runner.app 2>/dev/null
-          
-          echo "\n=== Final directory contents ==="
-          ls -la /var/www/html
+    - name: Verify iOS Files on Server (Direct SSH)
+      run: |
+        # Use sshpass and ssh directly to run commands on server
+        sshpass -p '${{ secrets.SERVER_PASSWORD }}' ssh -p 22 ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        echo "=== Checking iOS app on server ==="
+        if [ -d /var/www/html/Runner.app ]; then
+          echo "iOS app is in correct location: /var/www/html/Runner.app"
+          echo "iOS app size: $(du -sh /var/www/html/Runner.app | awk '{print $1}')"
+        else
+          echo "ERROR: iOS app not found!"
+        fi
+        
+        echo "\n=== Setting proper permissions for iOS app ==="
+        chmod -R 755 /var/www/html/Runner.app 2>/dev/null
+        
+        echo "\n=== Final directory contents ==="
+        ls -la /var/www/html
+        EOF
