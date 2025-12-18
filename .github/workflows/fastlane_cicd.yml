@@ -56,11 +56,86 @@ jobs:
     - name: Build Android APK
       run: fastlane android build
     
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v3
+    - name: Check Generated APK File
+      run: |
+        echo "=== Looking for generated APK files ==="
+        find . -name "*.apk" -type f | grep -v "build-cache" | sort
+        
+        echo "\n=== Checking build/app/outputs/flutter-apk directory ==="
+        ls -la build/app/outputs/flutter-apk
+        
+        echo "=== Verifying APK file exists ==="
+        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+          echo "APK file found at: build/app/outputs/flutter-apk/app-release.apk"
+          echo "APK file size: $(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')"
+          # Copy APK to root directory for simpler upload
+          cp build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
+          echo "APK file copied to root directory: $(ls -lh app-release.apk)"
+        else
+          echo "ERROR: APK file not found!"
+          exit 1
+        fi
+
+    - name: Create Download HTML
+      run: |
+        echo "<html>" > download.html
+        echo "<body>" >> download.html
+        echo "<h1>App Downloads</h1>" >> download.html
+        echo "<p>Click below to download the latest versions:</p>" >> download.html
+        echo "<h2>Android</h2>" >> download.html
+        echo "<a href='app-release.apk' download>Download APK</a>" >> download.html
+        echo "<h2>iOS</h2>" >> download.html
+        echo "<a href='Runner.app' download>Download iOS App</a>" >> download.html
+        echo "</body>" >> download.html
+        echo "</html>" >> download.html
+
+    - name: Upload APK to Server
+      uses: appleboy/scp-action@v0.1.4
       with:
-        name: android-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        source: "app-release.apk"
+        target: "/var/www/html"
+        overwrite: true
+      
+    - name: Upload HTML to Server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        source: "download.html"
+        target: "/var/www/html"
+        overwrite: true
+
+    - name: Verify Files on Server
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        script: |
+          echo "=== Checking /var/www/html directory contents ==="
+          ls -la /var/www/html
+          
+          echo "\n=== Fixing APK file location if needed ==="
+          if [ -f /var/www/html/app-release.apk ]; then
+            echo "APK file is already in correct location: /var/www/html/app-release.apk"
+          else
+            echo "ERROR: APK file not found!"
+          fi
+          
+          echo "\n=== Checking file permissions ==="
+          ls -lh /var/www/html/*.apk 2>/dev/null || echo "No APK files found"
+          ls -lh /var/www/html/download.html 2>/dev/null || echo "No HTML file found"
+          
+          echo "\n=== Setting proper permissions ==="
+          chmod 644 /var/www/html/app-release.apk 2>/dev/null
+          chmod 644 /var/www/html/download.html 2>/dev/null
+          
+          echo "\n=== Final directory contents ==="
+          ls -la /var/www/html
 
   build-ios:
     needs: test
@@ -87,8 +162,53 @@ jobs:
     - name: Build iOS app
       run: fastlane ios build
     
-    - name: Upload iOS artifact
-      uses: actions/upload-artifact@v3
+    - name: Check Generated iOS App
+      run: |
+        echo "=== Looking for generated iOS app files ==="
+        find . -name "Runner.app" -type d | sort
+        
+        echo "\n=== Checking build/ios/iphoneos directory ==="
+        ls -la build/ios/iphoneos
+        
+        echo "=== Verifying iOS app exists ==="
+        if [ -d "build/ios/iphoneos/Runner.app" ]; then
+          echo "iOS app found at: build/ios/iphoneos/Runner.app"
+          echo "iOS app size: $(du -sh build/ios/iphoneos/Runner.app | awk '{print $1}')"
+          # Copy iOS app to root directory for simpler upload
+          cp -r build/ios/iphoneos/Runner.app ./Runner.app
+          echo "iOS app copied to root directory: $(du -sh Runner.app | awk '{print $1}')"
+        else
+          echo "ERROR: iOS app not found!"
+          exit 1
+        fi
+
+    - name: Upload iOS App to Server
+      uses: appleboy/scp-action@v0.1.4
       with:
-        name: ios-app
-        path: build/ios/iphoneos/Runner.app
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        source: "Runner.app"
+        target: "/var/www/html"
+        overwrite: true
+
+    - name: Verify iOS Files on Server
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        password: ${{ secrets.SERVER_PASSWORD }}
+        script: |
+          echo "=== Checking iOS app on server ==="
+          if [ -d /var/www/html/Runner.app ]; then
+            echo "iOS app is in correct location: /var/www/html/Runner.app"
+            echo "iOS app size: $(du -sh /var/www/html/Runner.app | awk '{print $1}')"
+          else
+            echo "ERROR: iOS app not found!"
+          fi
+          
+          echo "\n=== Setting proper permissions for iOS app ==="
+          chmod -R 755 /var/www/html/Runner.app 2>/dev/null
+          
+          echo "\n=== Final directory contents ==="
+          ls -la /var/www/html
