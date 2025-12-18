@@ -1,0 +1,10 @@
+# This file is used by Bundler to manage fastlane dependencies.
+# To install fastlane, run `gem install fastlane` or `bundle install` in this directory.
+
+source "https://rubygems.org"
+
+# Install fastlane
+gem "fastlane"
+
+# If you use any plugins, add them here
+# For example: gem "fastlane-plugin-flutter", "~> 0.1.0"
