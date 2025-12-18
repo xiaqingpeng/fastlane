@@ -28,8 +28,15 @@ jobs:
     - name: Get Flutter dependencies
       run: flutter pub get
     
+    - name: Install Fastlane dependencies
+      run: |
+        cd ./fastlane
+        bundle install --quiet
+    
     - name: Run Flutter tests
-      run: fastlane flutter test
+      run: |
+        cd ./fastlane
+        bundle exec fastlane flutter test
 
   build-android:
     needs: test
@@ -53,8 +60,15 @@ jobs:
     - name: Get Flutter dependencies
       run: flutter pub get
     
+    - name: Install Fastlane dependencies
+      run: |
+        cd ./fastlane
+        bundle install --quiet
+    
     - name: Build Android APK
-      run: fastlane android build
+      run: |
+        cd ./fastlane
+        bundle exec fastlane android build
     
     - name: Check Generated APK File
       run: |
@@ -159,8 +173,15 @@ jobs:
     - name: Get Flutter dependencies
       run: flutter pub get
     
+    - name: Install Fastlane dependencies
+      run: |
+        cd ./fastlane
+        bundle install --quiet
+    
     - name: Build iOS app
-      run: fastlane ios build
+      run: |
+        cd ./fastlane
+        bundle exec fastlane ios build
     
     - name: Check Generated iOS App
       run: |
