@@ -63,19 +63,19 @@ jobs:
         echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > android/key.properties
         echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
-        echo "storeFile=../release.keystore" >> android/key.properties
+        echo "storeFile=release.keystore" >> android/key.properties
         
         # Create release keystore file from GitHub Secrets
         echo "Creating release.keystore file..."
-        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
         
         # Verify files were created successfully
         echo "=== Signing files verification ==="
         ls -la android/key.properties
-        ls -la release.keystore
+        ls -la android/release.keystore
         echo "Key properties content:"
         cat android/key.properties
-        echo "Key store file size: $(ls -lh release.keystore | awk '{print $5}')"
+        echo "Key store file size: $(ls -lh android/release.keystore | awk '{print $5}')"
     
     - name: Build Android APK
       working-directory: ./fastlane
