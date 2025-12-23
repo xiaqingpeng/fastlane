@@ -53,6 +53,30 @@ jobs:
     - name: Get Flutter dependencies
       run: flutter pub get
     
+    - name: Create Android signing files
+      run: |
+        # Create key.properties file from GitHub Secrets
+        echo "Creating key.properties file..."
+        mkdir -p android
+        cat > android/key.properties << EOF
+storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+storeFile=../release.keystore
+EOF
+        
+        # Create release keystore file from GitHub Secrets
+        echo "Creating release.keystore file..."
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        
+        # Verify files were created successfully
+        echo "=== Signing files verification ==="
+        ls -la android/key.properties
+        ls -la release.keystore
+        echo "Key properties content:"
+        cat android/key.properties
+        echo "Key store file size: $(ls -lh release.keystore | awk '{print $5}')"
+    
     - name: Build Android APK
       working-directory: ./fastlane
       run: bundle exec fastlane android build
