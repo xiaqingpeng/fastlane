@@ -8,7 +8,7 @@ mkdir -p android
 echo "storePassword=android" > android/key.properties
 echo "keyPassword=android" >> android/key.properties
 echo "keyAlias=release" >> android/key.properties
-echo "storeFile=../release.keystore" >> android/key.properties
+echo "storeFile=release.keystore" >> android/key.properties
 
 echo "Preparing release.keystore..."
 # Check if we have a keystore in secrets, otherwise use the fixed debug keystore
