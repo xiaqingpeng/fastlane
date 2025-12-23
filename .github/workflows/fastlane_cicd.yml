@@ -60,23 +60,37 @@ jobs:
         mkdir -p android
         
         # Write key.properties content
-        echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > android/key.properties
-        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
-        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
-        echo "storeFile=app/release.keystore" >> android/key.properties
+        echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD || 'android' }}" > android/key.properties
+        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD || 'android' }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS || 'release' }}" >> android/key.properties
+        echo "storeFile=release.keystore" >> android/key.properties
         
-        # Create release keystore file from GitHub Secrets
-        echo "Creating release.keystore file..."
-        mkdir -p android/app
-        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+        echo "Creating release.keystore..."
+        # Check if we have a keystore in secrets, otherwise generate a debug one
+        if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+          echo "Using keystore from GitHub Secrets..."
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+        else
+          echo "Generating debug keystore..."
+          keytool -genkey -v -keystore android/release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, OU=Debug, O=Example, L=Unknown, ST=Unknown, C=US"
+        fi
         
-        # Verify files were created successfully
-        echo "=== Signing files verification ==="
-        ls -la android/key.properties
-        ls -la android/app/release.keystore
-        echo "Key properties content:"
-        cat android/key.properties
-        echo "Key store file size: $(ls -lh android/app/release.keystore | awk '{print $5}')"
+        echo "Verifying created files..."
+        ls -la android/
+        if [ -f android/key.properties ]; then
+          echo "key.properties file created successfully: $(cat android/key.properties)"
+        else
+          echo "ERROR: key.properties file not created!"
+          exit 1
+        fi
+        
+        if [ -f android/release.keystore ]; then
+          echo "release.keystore file created successfully, size: $(du -sh android/release.keystore | awk '{print $1}')"
+        else
+          echo "ERROR: release.keystore file not created!"
+          exit 1
+        fi
+
     
     - name: Build Android APK
       working-directory: ./fastlane
