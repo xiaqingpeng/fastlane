@@ -63,7 +63,7 @@ jobs:
         echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD || 'android' }}" > android/key.properties
         echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD || 'android' }}" >> android/key.properties
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS || 'release' }}" >> android/key.properties
-        echo "storeFile=release.keystore" >> android/key.properties
+        echo "storeFile=../release.keystore" >> android/key.properties
         
         echo "Creating release.keystore..."
         # Check if we have a keystore in secrets, otherwise generate a debug one
