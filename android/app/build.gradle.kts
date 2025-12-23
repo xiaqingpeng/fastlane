@@ -45,11 +45,21 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Enable resource optimization
+        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Enable R8 code shrinking and obfuscation
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
