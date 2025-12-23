@@ -65,14 +65,13 @@ jobs:
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS || 'release' }}" >> android/key.properties
         echo "storeFile=../release.keystore" >> android/key.properties
         
-        echo "Creating release.keystore..."
-        # Check if we have a keystore in secrets, otherwise generate a debug one
-        if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-          echo "Using keystore from GitHub Secrets..."
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+        echo "Verifying existing release.keystore..."
+        # Check if release.keystore exists in project root
+        if [ -f "release.keystore" ]; then
+          echo "release.keystore found in project root, size: $(du -sh release.keystore | awk '{print $1}')"
         else
-          echo "Generating debug keystore..."
-          keytool -genkey -v -keystore android/release.keystore -alias release -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, OU=Debug, O=Example, L=Unknown, ST=Unknown, C=US"
+          echo "ERROR: release.keystore not found in project root!"
+          exit 1
         fi
         
         echo "Verifying created files..."
@@ -81,13 +80,6 @@ jobs:
           echo "key.properties file created successfully: $(cat android/key.properties)"
         else
           echo "ERROR: key.properties file not created!"
-          exit 1
-        fi
-        
-        if [ -f android/release.keystore ]; then
-          echo "release.keystore file created successfully, size: $(du -sh android/release.keystore | awk '{print $1}')"
-        else
-          echo "ERROR: release.keystore file not created!"
           exit 1
         fi
 
