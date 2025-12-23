@@ -81,8 +81,8 @@ platform :android do
   desc "Build Android app"
   lane :build do
     project_root = File.expand_path('..', __dir__)
-    puts "Building Android app..."
-    sh("cd #{project_root} && flutter build apk --release")
+    puts "Building Android app with optimized settings..."
+    sh("cd #{project_root} && flutter build apk --release --target-platform android-arm64 --shrink --split-debug-info=build/debug_info")
   end
   
   # Alias for global access
