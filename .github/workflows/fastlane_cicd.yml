@@ -195,18 +195,7 @@ jobs:
         ls -la /var/www/html
         EOF
 
-    - name: Send Android build success email
-      if: success()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ secrets.EMAIL_SERVER_ADDRESS }}
-        server_port: ${{ secrets.EMAIL_SERVER_PORT }}
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "CI Success: Android Build - ${{ github.repository }} ${{ github.ref }}"
-        body: "Android APK build succeeded!\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\n\nAPK file has been uploaded to the server."  
-        to: 626143872@qq.com
-        from: CI Bot <${{ secrets.EMAIL_USERNAME }}>
+
 
   build-ios:
     runs-on: macos-latest
@@ -312,15 +301,3 @@ jobs:
         ls -la /var/www/html
         EOF
 
-    - name: Send iOS build success email
-      if: success()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ secrets.EMAIL_SERVER_ADDRESS }}
-        server_port: ${{ secrets.EMAIL_SERVER_PORT }}
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "CI Success: iOS Build - ${{ github.repository }} ${{ github.ref }}"
-        body: "iOS app build succeeded!\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\n\niOS app has been uploaded to the server."
-        to: 626143872@qq.com
-        from: CI Bot <${{ secrets.EMAIL_USERNAME }}>
