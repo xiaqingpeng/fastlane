@@ -69,25 +69,60 @@ jobs:
         # Check if release.keystore exists in project root
         if [ -f "release.keystore" ]; then
           echo "release.keystore found in project root, size: $(du -sh release.keystore | awk '{print $1}')"
+          
+          # Calculate checksums for verification
+          echo "Calculating keystore checksums..."
+          KEYSTORE_MD5=$(md5 -q release.keystore 2>/dev/null || md5sum release.keystore | awk '{print $1}')
+          KEYSTORE_SHA256=$(shasum -a 256 release.keystore | awk '{print $1}')
+          echo "Keystore MD5: $KEYSTORE_MD5"
+          echo "Keystore SHA256: $KEYSTORE_SHA256"
+          
+          # Verify keystore can be accessed with the provided password
+          KEYSTORE_PASS="${{ secrets.ANDROID_STORE_PASSWORD || 'android' }}"
+          KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'release' }}"
+          echo "Verifying keystore accessibility..."
+          if keytool -list -v -keystore release.keystore -storepass "$KEYSTORE_PASS" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "✓ Keystore is valid and accessible with provided credentials"
+            echo "Keystore certificate information:"
+            keytool -list -v -keystore release.keystore -storepass "$KEYSTORE_PASS" -alias "$KEY_ALIAS" | grep -E "(Alias name:|Owner:|Issuer:|Valid from|Certificate fingerprints:)" | head -10
+          else
+            echo "✗ WARNING: Could not verify keystore with provided credentials!"
+            echo "This might cause signing issues. Please verify:"
+            echo "  - ANDROID_STORE_PASSWORD is correct"
+            echo "  - ANDROID_KEY_ALIAS is correct"
+            echo "  - Keystore file is valid"
+          fi
+          
           # Copy keystore to android/app/ where Gradle expects it
           cp release.keystore android/app/release.keystore
           echo "Keystore copied to android/app/release.keystore"
+          
+          # Verify the copied file
+          COPIED_MD5=$(md5 -q android/app/release.keystore 2>/dev/null || md5sum android/app/release.keystore | awk '{print $1}')
+          if [ "$KEYSTORE_MD5" = "$COPIED_MD5" ]; then
+            echo "✓ Keystore copy verified (MD5 match)"
+          else
+            echo "✗ ERROR: Keystore copy verification failed!"
+            exit 1
+          fi
         else
           echo "ERROR: release.keystore not found in project root!"
           exit 1
         fi
         
-        echo "Verifying created files..."
+        echo "\nVerifying created files..."
         ls -la android/
         ls -la android/app/
         if [ -f android/key.properties ]; then
-          echo "key.properties file created successfully: $(cat android/key.properties)"
+          echo "✓ key.properties file created successfully"
+          echo "Contents (passwords masked):"
+          sed 's/Password=.*/Password=***/' android/key.properties
         else
           echo "ERROR: key.properties file not created!"
           exit 1
         fi
         if [ -f android/app/release.keystore ]; then
-          echo "Keystore file verified at android/app/release.keystore"
+          echo "✓ Keystore file verified at android/app/release.keystore"
         else
           echo "ERROR: Keystore file not found at android/app/release.keystore!"
           exit 1
