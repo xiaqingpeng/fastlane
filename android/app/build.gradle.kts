@@ -39,11 +39,24 @@ android {
         if (hasKeyProperties) {
             create("release") {
                 val storeFileValue = keyProperties["storeFile"] as String
-                // Resolve keystore path relative to android/app/ directory
-                val keystoreFile = file(storeFileValue)
                 
-                if (!keystoreFile.exists()) {
-                    throw GradleException("Keystore file not found: ${keystoreFile.absolutePath}. Please ensure the keystore file exists at the specified location.")
+                // Try multiple possible locations for keystore file
+                val possiblePaths = listOf(
+                    file(storeFileValue), // android/app/release.keystore (relative to android/app/)
+                    rootProject.file("app/$storeFileValue"), // android/app/release.keystore (from android/)
+                    rootProject.file(storeFileValue), // android/release.keystore (from android/)
+                    rootProject.file("../$storeFileValue") // release.keystore (from project root)
+                )
+                
+                val keystoreFile = possiblePaths.firstOrNull { it.exists() }
+                
+                if (keystoreFile == null) {
+                    val searchedPaths = possiblePaths.joinToString("\n  - ") { it.absolutePath }
+                    throw GradleException(
+                        "Keystore file not found: $storeFileValue\n" +
+                        "Searched in:\n  - $searchedPaths\n" +
+                        "Please ensure the keystore file exists in one of these locations."
+                    )
                 }
                 
                 storeFile = keystoreFile

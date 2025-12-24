@@ -118,6 +118,55 @@ jobs:
           exit 1
         fi
 
+    - name: Verify APK Signature
+      run: |
+        echo "=== Verifying APK Signature ==="
+        
+        # Check if jarsigner is available
+        if ! command -v jarsigner &> /dev/null; then
+          echo "WARNING: jarsigner not found, skipping signature verification"
+          exit 0
+        fi
+        
+        # Verify APK signature
+        echo "Checking APK signature..."
+        if jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk > apk_signature_info.txt 2>&1; then
+          echo "✓ APK signature is valid"
+          echo "\n=== APK Signature Details ==="
+          cat apk_signature_info.txt | grep -A 20 "Certificate chain" || cat apk_signature_info.txt
+          
+          # Extract certificate information
+          echo "\n=== Certificate Fingerprints ==="
+          unzip -q -o build/app/outputs/flutter-apk/app-release.apk -d /tmp/apk_extract 2>/dev/null || true
+          if [ -f /tmp/apk_extract/META-INF/*.RSA ] || [ -f /tmp/apk_extract/META-INF/*.DSA ] || [ -f /tmp/apk_extract/META-INF/*.EC ]; then
+            CERT_FILE=$(find /tmp/apk_extract/META-INF -name "*.RSA" -o -name "*.DSA" -o -name "*.EC" | head -1)
+            if [ -n "$CERT_FILE" ]; then
+              echo "Certificate file: $CERT_FILE"
+              keytool -printcert -file "$CERT_FILE" 2>/dev/null | grep -E "(Owner:|Issuer:|SHA1:|SHA256:)" || echo "Could not extract certificate details"
+            fi
+          fi
+        else
+          echo "✗ ERROR: APK signature verification failed!"
+          cat apk_signature_info.txt
+          exit 1
+        fi
+        
+        # Verify keystore information
+        echo "\n=== Keystore Information ==="
+        if [ -f android/app/release.keystore ]; then
+          echo "Keystore file: android/app/release.keystore"
+          echo "Keystore size: $(du -sh android/app/release.keystore | awk '{print $1}')"
+          echo "Keystore MD5: $(md5 -q android/app/release.keystore 2>/dev/null || md5sum android/app/release.keystore | awk '{print $1}')"
+          
+          # List aliases in keystore (if password is available)
+          KEYSTORE_PASS="${{ secrets.ANDROID_STORE_PASSWORD || 'android' }}"
+          if keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASS" 2>/dev/null | head -30; then
+            echo "\n✓ Keystore is accessible and contains certificates"
+          else
+            echo "WARNING: Could not list keystore contents (password might be incorrect)"
+          fi
+        fi
+
     - name: Create Download HTML
       run: |
         echo "<html>" > download.html
