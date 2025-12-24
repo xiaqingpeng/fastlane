@@ -49,10 +49,34 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.38.3'
+        cache: true
+        cache-key: 'flutter-3.38.3'
+        cache-path: '${{ runner.tool_cache }}/flutter'
+    
+    - name: Cache Flutter dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.pub-cache
+          .dart_tool
+        key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-flutter-
+    
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          android/.gradle
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties', '**/build.gradle.kts', '**/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
     
     - name: Get Flutter dependencies
       run: flutter pub get
-    
+      
     - name: Create Android signing files
       run: |
         # Create key.properties file from GitHub Secrets
@@ -131,7 +155,12 @@ jobs:
     
     - name: Build Android APK
       working-directory: ./fastlane
-      run: bundle exec fastlane android build
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.configureondemand=true"
+      run: |
+        # Enable Gradle build cache and parallel execution
+        # Note: Flutter build will handle cleaning automatically, so we skip manual clean
+        bundle exec fastlane android build
     
     - name: Check Generated APK File
       run: |
@@ -142,20 +171,42 @@ jobs:
         ls -la build/app/outputs/flutter-apk
         
         echo "=== Verifying APK file exists ==="
-        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-          echo "APK file found at: build/app/outputs/flutter-apk/app-release.apk"
+        # Check for split APKs (smaller size) or universal APK
+        if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+          echo "Split APK found: app-arm64-v8a-release.apk"
+          APK_FILE="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+          echo "APK file size: $(ls -lh $APK_FILE | awk '{print $5}')"
+          cp $APK_FILE ./app-release.apk
+          echo "APK file copied to root directory: $(ls -lh app-release.apk)"
+        elif [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+          echo "Universal APK found: app-release.apk"
           echo "APK file size: $(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')"
-          # Copy APK to root directory for simpler upload
           cp build/app/outputs/flutter-apk/app-release.apk ./app-release.apk
           echo "APK file copied to root directory: $(ls -lh app-release.apk)"
         else
           echo "ERROR: APK file not found!"
+          echo "Available APK files:"
+          ls -la build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APK files found"
           exit 1
         fi
+        
+        echo "\n=== APK Size Analysis ==="
+        echo "Final APK size: $(du -h app-release.apk | awk '{print $1}')"
+        echo "APK size in bytes: $(stat -f%z app-release.apk 2>/dev/null || stat -c%s app-release.apk)"
 
     - name: Verify APK Signature
       run: |
         echo "=== Verifying APK Signature ==="
+        
+        # Determine which APK file to verify
+        if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+          APK_TO_VERIFY="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+        elif [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+          APK_TO_VERIFY="build/app/outputs/flutter-apk/app-release.apk"
+        else
+          echo "ERROR: No APK file found for verification"
+          exit 1
+        fi
         
         # Check if jarsigner is available
         if ! command -v jarsigner &> /dev/null; then
@@ -164,15 +215,15 @@ jobs:
         fi
         
         # Verify APK signature
-        echo "Checking APK signature..."
-        if jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk > apk_signature_info.txt 2>&1; then
+        echo "Checking APK signature for: $APK_TO_VERIFY"
+        if jarsigner -verify -verbose -certs "$APK_TO_VERIFY" > apk_signature_info.txt 2>&1; then
           echo "✓ APK signature is valid"
           echo "\n=== APK Signature Details ==="
           cat apk_signature_info.txt | grep -A 20 "Certificate chain" || cat apk_signature_info.txt
           
           # Extract certificate information
           echo "\n=== Certificate Fingerprints ==="
-          unzip -q -o build/app/outputs/flutter-apk/app-release.apk -d /tmp/apk_extract 2>/dev/null || true
+          unzip -q -o "$APK_TO_VERIFY" -d /tmp/apk_extract 2>/dev/null || true
           if [ -f /tmp/apk_extract/META-INF/*.RSA ] || [ -f /tmp/apk_extract/META-INF/*.DSA ] || [ -f /tmp/apk_extract/META-INF/*.EC ]; then
             CERT_FILE=$(find /tmp/apk_extract/META-INF -name "*.RSA" -o -name "*.DSA" -o -name "*.EC" | head -1)
             if [ -n "$CERT_FILE" ]; then
@@ -319,6 +370,13 @@ jobs:
     
     - name: Get Flutter dependencies
       run: flutter pub get
+    
+    - name: Increment Version Number
+      run: |
+        echo "=== Incrementing Version Number ==="
+        ./scripts/increment_version.sh
+        echo "=== Updated pubspec.yaml ==="
+        grep -E '^version:' pubspec.yaml
     
     - name: Build iOS app
       working-directory: ./fastlane
