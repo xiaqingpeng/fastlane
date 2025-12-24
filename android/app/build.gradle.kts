@@ -25,14 +25,35 @@ android {
     // Load signing configuration from key.properties
     val keyPropertiesFile = rootProject.file("key.properties")
     val keyProperties = Properties()
-    keyProperties.load(FileInputStream(keyPropertiesFile))
+    val hasKeyProperties = keyPropertiesFile.exists()
+    
+    if (hasKeyProperties) {
+        keyProperties.load(FileInputStream(keyPropertiesFile))
+        println("Loaded signing configuration from: ${keyPropertiesFile.absolutePath}")
+    } else {
+        println("WARNING: key.properties file not found at ${keyPropertiesFile.absolutePath}")
+        println("Release builds will use debug signing (not suitable for production)")
+    }
 
     signingConfigs {
-        create("release") {
-            storeFile = file(keyProperties["storeFile"] as String)
-            storePassword = keyProperties["storePassword"]?.toString()
-            keyAlias = keyProperties["keyAlias"]?.toString()
-            keyPassword = keyProperties["keyPassword"]?.toString()
+        if (hasKeyProperties) {
+            create("release") {
+                val storeFileValue = keyProperties["storeFile"] as String
+                // Resolve keystore path relative to android/app/ directory
+                val keystoreFile = file(storeFileValue)
+                
+                if (!keystoreFile.exists()) {
+                    throw GradleException("Keystore file not found: ${keystoreFile.absolutePath}. Please ensure the keystore file exists at the specified location.")
+                }
+                
+                storeFile = keystoreFile
+                storePassword = keyProperties["storePassword"]?.toString()
+                keyAlias = keyProperties["keyAlias"]?.toString()
+                keyPassword = keyProperties["keyPassword"]?.toString()
+                
+                println("Using keystore: ${keystoreFile.absolutePath}")
+                println("Key alias: ${keyProperties["keyAlias"]}")
+            }
         }
     }
 
@@ -52,7 +73,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Only use release signing config if it exists
+            if (hasKeyProperties && signingConfigs.findByName("release") != null) {
+                signingConfig = signingConfigs.getByName("release")
+                println("Release build will be signed with release keystore")
+            } else {
+                println("WARNING: Release build will use debug signing (not suitable for production)")
+            }
             // Enable R8 code shrinking and obfuscation
             isMinifyEnabled = true
             isShrinkResources = true
