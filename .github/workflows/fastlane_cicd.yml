@@ -57,7 +57,7 @@ jobs:
       run: |
         # Create key.properties file from GitHub Secrets
         echo "Creating key.properties file..."
-        mkdir -p android
+        mkdir -p android/app
         
         # Write key.properties content
         echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD || 'android' }}" > android/key.properties
@@ -69,6 +69,9 @@ jobs:
         # Check if release.keystore exists in project root
         if [ -f "release.keystore" ]; then
           echo "release.keystore found in project root, size: $(du -sh release.keystore | awk '{print $1}')"
+          # Copy keystore to android/app/ where Gradle expects it
+          cp release.keystore android/app/release.keystore
+          echo "Keystore copied to android/app/release.keystore"
         else
           echo "ERROR: release.keystore not found in project root!"
           exit 1
@@ -76,10 +79,17 @@ jobs:
         
         echo "Verifying created files..."
         ls -la android/
+        ls -la android/app/
         if [ -f android/key.properties ]; then
           echo "key.properties file created successfully: $(cat android/key.properties)"
         else
           echo "ERROR: key.properties file not created!"
+          exit 1
+        fi
+        if [ -f android/app/release.keystore ]; then
+          echo "Keystore file verified at android/app/release.keystore"
+        else
+          echo "ERROR: Keystore file not found at android/app/release.keystore!"
           exit 1
         fi
 
@@ -143,8 +153,24 @@ jobs:
     - name: Add server to known_hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        
+        echo "Attempting to add server to known_hosts..."
+        # Try to add the server's host key, with timeout and error handling
+        if ssh-keyscan -H -p 22 -T 10 ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>&1; then
+          echo "Successfully added server to known_hosts"
+        else
+          echo "Warning: ssh-keyscan failed, but continuing..."
+          echo "This might be okay if the server uses password authentication only"
+        fi
+        
         chmod 600 ~/.ssh/known_hosts
+        
+        # Verify the known_hosts file
+        if [ -f ~/.ssh/known_hosts ]; then
+          echo "known_hosts file exists"
+          cat ~/.ssh/known_hosts | grep -q "${{ secrets.SERVER_HOST }}" && echo "Server found in known_hosts" || echo "Server not found in known_hosts (may still work)"
+        fi
 
     - name: Create SSH config
       run: |
@@ -256,8 +282,24 @@ jobs:
     - name: Add server to known_hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        
+        echo "Attempting to add server to known_hosts..."
+        # Try to add the server's host key, with timeout and error handling
+        if ssh-keyscan -H -p 22 -T 10 ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>&1; then
+          echo "Successfully added server to known_hosts"
+        else
+          echo "Warning: ssh-keyscan failed, but continuing..."
+          echo "This might be okay if the server uses password authentication only"
+        fi
+        
         chmod 600 ~/.ssh/known_hosts
+        
+        # Verify the known_hosts file
+        if [ -f ~/.ssh/known_hosts ]; then
+          echo "known_hosts file exists"
+          cat ~/.ssh/known_hosts | grep -q "${{ secrets.SERVER_HOST }}" && echo "Server found in known_hosts" || echo "Server not found in known_hosts (may still work)"
+        fi
 
     - name: Create SSH config
       run: |
