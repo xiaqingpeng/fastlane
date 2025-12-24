@@ -76,7 +76,7 @@ jobs:
     
     - name: Get Flutter dependencies
       run: flutter pub get
-      
+
     - name: Create Android signing files
       run: |
         # Create key.properties file from GitHub Secrets
@@ -370,13 +370,6 @@ jobs:
     
     - name: Get Flutter dependencies
       run: flutter pub get
-    
-    - name: Increment Version Number
-      run: |
-        echo "=== Incrementing Version Number ==="
-        ./scripts/increment_version.sh
-        echo "=== Updated pubspec.yaml ==="
-        grep -E '^version:' pubspec.yaml
     
     - name: Build iOS app
       working-directory: ./fastlane
